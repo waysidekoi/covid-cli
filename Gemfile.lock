@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    covid (0.1.0)
+    covid-cli (0.1.0)
       actionview
       activerecord
       httparty
@@ -91,7 +91,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  covid!
+  covid-cli!
   pry
   thor
 
