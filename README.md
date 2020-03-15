@@ -26,7 +26,7 @@ Or install it yourself as:
 ## 1. Usage
 
 To use all available commands, run the following in your terminal:
-```
+```ruby
 ❯ bundle exec covid
 
 Commands:
@@ -38,7 +38,7 @@ Commands:
 ```
 
 ## 1. View a single US state, non-US state of a country, or a country
-```
+```ruby
 ❯ bundle exec covid show --state=NY
 
 Confirmed
@@ -56,7 +56,7 @@ Deaths
 ```
 
 ## 2. Compare multiple US states or countries
-```
+```ruby
 ❯ bundle exec covid compare us iran
 
 Confirmed
@@ -80,7 +80,7 @@ You can run `bin/console` for an interactive prompt that will allow you to exper
 ```
 ./bin/console
 ```
-```
+```ruby
 > Covid::Country.first
 > Covid::State.first
 > state = _
