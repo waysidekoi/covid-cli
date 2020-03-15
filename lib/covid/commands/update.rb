@@ -227,6 +227,7 @@ module Covid
         us = Country.find_by(name: "US")
         us.send(reportable).destroy_all
         us.send(reportable).build(data)
+        us.save
       end
     end
   end
