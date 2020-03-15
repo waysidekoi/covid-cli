@@ -1,7 +1,7 @@
 # Covid
 
 Display the latest SARS-CoV-2 reported numbers via CLI. Global SARS-CoV-2 Confirmations, deaths, and
- recovered numbers are fetched from the JHU team at https://github.com/CSSEGISandData/COVID-19
+recovered numbers are fetched from the JHU team at https://github.com/CSSEGISandData/COVID-19.
 
 ## Installation
 
