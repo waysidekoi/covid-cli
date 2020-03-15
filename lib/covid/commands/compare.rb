@@ -67,6 +67,7 @@ module Covid
       }
       def initialize(names, options)
         @locations = state_countries_for(names).flatten
+        raise Error.new("No locations found for: #{names}") unless @locations.present?
         @options = options
       end
 
@@ -125,10 +126,10 @@ module Covid
             # lookup US state abbr
             #
             # al => AL
-            state = State.find_by(name: STATES[location.upcase])
+            state = State.where('lower(name) = ?', STATES[location.upcase]).first
             (memo[:states] ||= []) << state if state
           else
-            country = Country.find_by(name: location.titleize)
+            country = Country.where('lower(name) = ?', location.downcase).first
             (memo[:countries] ||= []) << country if country
           end
         }.values

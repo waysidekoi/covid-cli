@@ -21,8 +21,8 @@ module Covid
         "CO" => "Colorado",
         "CT" => "Connecticut",
         "DE" => "Delaware",
-        "DC" => "District Of Columbia",
-        "D.C." => "District Of Columbia",
+        "DC" => "District of Columbia",
+        "D.C." => "District of Columbia",
         "FL" => "Florida",
         "GA" => "Georgia",
         "HI" => "Hawaii",
@@ -76,6 +76,9 @@ module Covid
         fetch(:confirmed)
         fetch(:deaths)
         fetch(:recovered)
+        update_us(:confirmed)
+        update_us(:deaths)
+        update_us(:recovered)
 
         output.puts "Countries: #{Country.count}"
         output.puts "States: #{State.count}"
@@ -86,22 +89,22 @@ module Covid
         raise "Header for Provice/State doesn't exist" unless row.key?("Province/State")
 
         country = row["Country/Region"]
-        state = row["Province/State"]
+        province_state = row["Province/State"]
         lat = row["Lat"]
         long = row["Long"]
 
         country = Country.find_by(name: country) || Country.create( Hash.new.tap { |hash|
           hash[:name] = country
-          hash[:latitude] = lat unless state # store lat,long at state level
-          hash[:longitude] = long unless state # store lat,long at state level
+          hash[:latitude] = lat unless province_state # store lat,long at state level
+          hash[:longitude] = long unless province_state # store lat,long at state level
         })
 
-        if state
-          name = state_name_for(state)
-          s = State.find_by(name: state)
-          s ? s : State.create(name: state, latitude: lat, longitude: long, country: country)
+        if province_state
+          name = us_state_name_for(province_state) || province_state
+          s = State.find_by(name: name)
+          s ? s : State.create(name: name, latitude: lat, longitude: long, country: country)
         else
-          country
+          country.tap { |c| c.update(latitude: lat, longitude: long) }
         end
       end
 
@@ -109,26 +112,29 @@ module Covid
         Date.strptime(str,format) rescue false
       end
 
-      def state_name_for(string)
+      def us_state_name_for(string)
         if string.in?(STATES.values)
           # string is an US state
           #
           # Washington
           string
-        elsif STATES[string.to_s.split(",").last]
-          # lookup US state abbr
+        else
+          # lookup US state via US state abbr
           #
           # Pottawattamie, IA
           # Camden, NC
           #
-          STATES[string.to_s.split(",").last]
-        else
-          # Not a US state or state abbr, default to self
-          #
-          # British Columbia
-          # Liaoning
-          string
+          us_state_name_for_full_state_abbr_string(string)
         end
+      end
+
+      def us_state_name_for_full_state_abbr_string(abbr)
+        # lookup US state via US state abbr
+        #
+        # Pottawattamie, IA
+        # Camden, NC
+        #
+        STATES[abbr.to_s.split(",").last.strip]
       end
 
       def fetch(reportable, output=$stdout)
@@ -147,6 +153,9 @@ module Covid
               count: count
             }
 
+            if location.name == "US"
+              require 'pry'; binding.pry
+            end
             location.send(reportable).build(report).tap { |report|
               output.puts "#{reportable.to_s.titleize}: #{location.full_name}, #{report.date}, #{report.count}"
             }
@@ -154,6 +163,70 @@ module Covid
 
           location.save
         end
+
+        rename_taiwan
+        update_us(reportable)
+      end
+
+      def rename_taiwan
+        country = Country.find_by(name: "Taiwan*")
+        if country
+          country.update(name: "Taiwan")
+        end
+      end
+
+      def update_us(reportable)
+        #
+        # The source data intially had US numbers by county, state. Then, later
+        # rolled those numbers up into their own US State row. Gracefully
+        # ensure numbers aren't double counted, and all history is preserved.
+        #
+        data_source = case reportable
+          when :confirmed then COVID_CONFIRMED_PATH
+          when :deaths then COVID_DEATHS_PATH
+          when :recovered then COVID_RECOVERED_PATH
+        end
+
+        resp = HTTParty.get(data_source)
+        csv = CSV.parse(resp.body, headers: true)
+        #
+        # => ["1/22/20",
+        #  "1/23/20",
+        #  "1/24/20",
+        #  "1/25/20",
+        #  "1/26/20",
+        #  "1/27/20",
+        #
+        all_dates = csv.headers.select { |date| valid_date?(date) }
+
+        data = all_dates.each_with_object([]) do |date, memo|
+          country_column = "Country/Region"
+          state_column = "Province/State"
+          parsed_date = Date.strptime(date, REPORTS_DATE_FORMAT)
+          date_of_aggregated_state_reporting_switchover = Date.new(2020, 3, 10)
+
+          count = STATES.values.uniq.map { |state_name|
+            aggregated_state_row = csv.find { |row| row[country_column] == "US" && row[state_column] == state_name }
+            counties = csv.select { |row| row[country_column] == "US" && us_state_name_for_full_state_abbr_string(row[state_column]) == state_name }
+
+            counties_sum = counties.map { |county| county[date].to_i }.sum
+            aggregated_state_sum = aggregated_state_row[date].to_i
+
+            if parsed_date >= date_of_aggregated_state_reporting_switchover
+              aggregated_state_row[date].to_i
+            else
+              counties_sum
+            end
+          }.sum
+          memo << {
+            date: parsed_date,
+            count: count
+          }
+        end
+
+        us = Country.find_by(name: "US")
+        us.send(reportable).destroy_all
+        us.send(reportable).build(data)
       end
     end
   end
