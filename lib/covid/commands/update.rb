@@ -7,7 +7,7 @@ require 'covid'
 
 module Covid
   module Commands
-    class GetLatest < Covid::Command
+    class Update < Covid::Command
       COVID_CONFIRMED_PATH = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv"
       COVID_DEATHS_PATH = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
       COVID_RECOVERED_PATH = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv"
@@ -77,7 +77,8 @@ module Covid
         fetch(:deaths)
         fetch(:recovered)
 
-        output.puts "Done"
+        output.puts "Countries: #{Country.count}"
+        output.puts "States: #{State.count}"
       end
 
       def location_for(row)
@@ -146,7 +147,7 @@ module Covid
               count: count
             }
 
-            location.send(reportable).build(report).tap {
+            location.send(reportable).build(report).tap { |report|
               output.puts "#{reportable.to_s.titleize}: #{location.full_name}, #{report.date}, #{report.count}"
             }
           end

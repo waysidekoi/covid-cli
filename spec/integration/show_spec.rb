@@ -1,9 +1,9 @@
-RSpec.describe "`covid update` command", type: :cli do
-  it "executes `covid help update` command successfully" do
-    output = `covid help update`
+RSpec.describe "`covid show` command", type: :cli do
+  it "executes `covid help show` command successfully" do
+    output = `covid help show`
     expected_output = <<-OUT
 Usage:
-  covid update
+  covid show [COUNTRY]
 
 Options:
   -h, [--help], [--no-help]  # Display usage information
